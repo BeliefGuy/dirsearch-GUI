@@ -1,11 +1,14 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout,
-    QWidget, QLineEdit, QLabel, QFormLayout, QTextEdit, QScrollArea
+    QWidget, QTextEdit, QLabel, QLineEdit, QFormLayout, QScrollArea
 )
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtCore import QSize
 import sys
 import subprocess
+import os
+import uuid
+
 
 class DirsearchGUI(QMainWindow):
     def __init__(self):
@@ -28,7 +31,7 @@ class DirsearchGUI(QMainWindow):
 
         # 创建表单布局以添加输入框和标签
         self.formLayout = QFormLayout()
-        self.urlLineEdit = QLineEdit()
+        self.urlTextEdit = QTextEdit()  # 改为多行文本框
         self.paramsLineEdit = QLineEdit()
 
         # 创建按钮和标签
@@ -58,7 +61,7 @@ class DirsearchGUI(QMainWindow):
         self.helpScrollArea = QScrollArea()
         self.helpScrollArea.setWidget(self.helpTextEdit)
         self.helpScrollArea.setWidgetResizable(True)
-        self.helpScrollArea.setMaximumHeight(200)  # 调大最大高度以显示更多帮助文本
+        self.helpScrollArea.setMaximumHeight(300)  # 调大最大高度以显示更多帮助文本
         self.helpTextEdit.setStyleSheet("background-color: #F0F0F0;")
 
         # 设置帮助文本框
@@ -66,7 +69,7 @@ class DirsearchGUI(QMainWindow):
         self.helpTextEdit.setReadOnly(True)
 
         # 添加表单元素
-        self.formLayout.addRow('URL:', self.urlLineEdit)
+        self.formLayout.addRow('URLs:', self.urlTextEdit)  # 更改为多行文本框
         self.formLayout.addRow('自定义参数:', self.paramsLineEdit)
 
         # 为按钮添加事件
@@ -191,13 +194,21 @@ class DirsearchGUI(QMainWindow):
             self.helpScrollArea.setMaximumHeight(0)
             self.helpToggleButton.setText('显示帮助')
         else:
-            self.helpScrollArea.setMaximumHeight(200)  # 设置最大高度以显示帮助文本
+            self.helpScrollArea.setMaximumHeight(300)  # 设置最大高度以显示帮助文本
             self.helpToggleButton.setText('隐藏帮助')
 
     def run_dirsearch(self):
-        url = self.urlLineEdit.text()
+        os.makedirs('urls', exist_ok=True)  # 创建文件夹
+        file_name = uuid.uuid4().hex + '.txt'  # 生成随机文件名
+        file_path = os.path.join('urls', file_name)  # 路径拼接
+
+        # 将URLs写入文件
+        with open(file_path, 'w') as file:
+            urls = self.urlTextEdit.toPlainText().strip()
+            file.write(urls)
+
         params = self.paramsLineEdit.text()
-        command = f'cmd.exe /c start cmd.exe /k python dirsearch.py -u {url} {params}'
+        command = f'cmd.exe /c start cmd.exe /k python dirsearch.py -l {file_path} {params}'
         subprocess.Popen(command, shell=True)
         self.statusLabel.setText('状态: 正在扫描...')
 
@@ -208,6 +219,7 @@ class DirsearchGUI(QMainWindow):
     def update_status_on_text_change(self):
         if not self.paramsLineEdit.text():
             self.statusLabel.setText('状态: 准备就绪')
+
 
 app = QApplication(sys.argv)
 window = DirsearchGUI()
