@@ -1,16 +1,14 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout,
     QWidget, QTextEdit, QLabel, QLineEdit, QFormLayout, QScrollArea,
-    QMessageBox  # 引入消息框组件
+    QMessageBox
 )
 from PyQt6.QtGui import QFont, QIcon
-from PyQt6.QtCore import QSize
 import sys
 import subprocess
 import os
 import uuid
-import shutil  # 引入shutil用于文件夹操作
-
+import shutil
 
 class DirsearchGUI(QMainWindow):
     def __init__(self):
@@ -18,8 +16,8 @@ class DirsearchGUI(QMainWindow):
 
         # 窗口设置
         self.setWindowTitle('Dirsearch GUI - Lxy')
-        self.setGeometry(800, 400, 600, 400)  # 调整窗口初始高度
-        self.setWindowIcon(QIcon('your-icon-path.png'))  # 设置窗口图标
+        self.setGeometry(800, 400, 600, 400)
+        self.setWindowIcon(QIcon('your-icon-path.png'))
 
         # 设置字体
         font = QFont()
@@ -33,14 +31,15 @@ class DirsearchGUI(QMainWindow):
 
         # 创建表单布局以添加输入框和标签
         self.formLayout = QFormLayout()
-        self.urlTextEdit = QTextEdit()  # 改为多行文本框
+        self.urlTextEdit = QTextEdit()
+        self.urlTextEdit.setAcceptRichText(False)  # 禁止将URL转换为超链接
         self.paramsLineEdit = QLineEdit()
 
         # 创建按钮和标签
         self.runButton = QPushButton('运行')
         self.defaultButton = QPushButton('默认参数')
         self.helpToggleButton = QPushButton('显示帮助')
-        self.clearCacheButton = QPushButton('清除缓存')  # 添加清除缓存按钮
+        self.clearCacheButton = QPushButton('清除缓存')
         self.statusLabel = QLabel('状态: 准备就绪')
 
         # 按钮样式
