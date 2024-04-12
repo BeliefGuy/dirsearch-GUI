@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout,
-    QWidget, QTextEdit, QLabel, QLineEdit, QFormLayout, QScrollArea
+    QWidget, QTextEdit, QLabel, QLineEdit, QFormLayout, QScrollArea,
+    QMessageBox  # 引入消息框组件
 )
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtCore import QSize
@@ -8,6 +9,7 @@ import sys
 import subprocess
 import os
 import uuid
+import shutil  # 引入shutil用于文件夹操作
 
 
 class DirsearchGUI(QMainWindow):
@@ -38,6 +40,7 @@ class DirsearchGUI(QMainWindow):
         self.runButton = QPushButton('运行')
         self.defaultButton = QPushButton('默认参数')
         self.helpToggleButton = QPushButton('显示帮助')
+        self.clearCacheButton = QPushButton('清除缓存')  # 添加清除缓存按钮
         self.statusLabel = QLabel('状态: 准备就绪')
 
         # 按钮样式
@@ -55,13 +58,14 @@ class DirsearchGUI(QMainWindow):
         self.runButton.setStyleSheet(buttonStyle)
         self.defaultButton.setStyleSheet(buttonStyle)
         self.helpToggleButton.setStyleSheet(buttonStyle)
+        self.clearCacheButton.setStyleSheet(buttonStyle)  # 应用样式到清除缓存按钮
 
         # 创建帮助文本框和滚动区域
         self.helpTextEdit = QTextEdit()
         self.helpScrollArea = QScrollArea()
         self.helpScrollArea.setWidget(self.helpTextEdit)
         self.helpScrollArea.setWidgetResizable(True)
-        self.helpScrollArea.setMaximumHeight(300)  # 调大最大高度以显示更多帮助文本
+        self.helpScrollArea.setMaximumHeight(0)  # 修改默认不显示
         self.helpTextEdit.setStyleSheet("background-color: #F0F0F0;")
 
         # 设置帮助文本框
@@ -69,13 +73,14 @@ class DirsearchGUI(QMainWindow):
         self.helpTextEdit.setReadOnly(True)
 
         # 添加表单元素
-        self.formLayout.addRow('URLs:', self.urlTextEdit)  # 更改为多行文本框
+        self.formLayout.addRow('URLs:', self.urlTextEdit)
         self.formLayout.addRow('自定义参数:', self.paramsLineEdit)
 
         # 为按钮添加事件
         self.runButton.clicked.connect(self.run_dirsearch)
         self.defaultButton.clicked.connect(self.set_default_params)
         self.helpToggleButton.clicked.connect(self.toggle_help_visibility)
+        self.clearCacheButton.clicked.connect(self.clear_cache)  # 绑定清除缓存方法到按钮
 
         # 为自定义参数输入框添加文本变化事件
         self.paramsLineEdit.textChanged.connect(self.update_status_on_text_change)
@@ -85,8 +90,9 @@ class DirsearchGUI(QMainWindow):
         self.layout.addWidget(self.runButton)
         self.layout.addWidget(self.defaultButton)
         self.layout.addWidget(self.helpToggleButton)
+        self.layout.addWidget(self.clearCacheButton)  # 添加清除缓存按钮到布局
         self.layout.addWidget(self.statusLabel)
-        self.layout.addWidget(self.helpScrollArea)  # 添加滚动区域到布局中
+        self.layout.addWidget(self.helpScrollArea)
 
         # 设置中央小部件和布局
         self.centralWidget.setLayout(self.layout)
@@ -183,8 +189,8 @@ class DirsearchGUI(QMainWindow):
         输出设置:
         -o PATH/URL, --output=PATH/URL: 设置输出文件，或MySQL/PostgreSQL数据库URL（格式：scheme: //[username:password @]host[:port] /database）
         --format=FORMAT: 设置报告的输出格式（支持：simple, plain, json, xml, md, csv, html, sqlite, mysql, postgresql）
-        --log=PATH: 指定日志文件路径"""
-            # 可以继续追加帮助文本内容...
+        --log=PATH: 指定日志文件路径"""            
+        # 可以继续追加帮助文本内容...
         )
         self.helpTextEdit.setText(help_text)
 
@@ -194,15 +200,14 @@ class DirsearchGUI(QMainWindow):
             self.helpScrollArea.setMaximumHeight(0)
             self.helpToggleButton.setText('显示帮助')
         else:
-            self.helpScrollArea.setMaximumHeight(300)  # 设置最大高度以显示帮助文本
+            self.helpScrollArea.setMaximumHeight(300)
             self.helpToggleButton.setText('隐藏帮助')
 
     def run_dirsearch(self):
-        os.makedirs('urls', exist_ok=True)  # 创建文件夹
-        file_name = uuid.uuid4().hex + '.txt'  # 生成随机文件名
-        file_path = os.path.join('urls', file_name)  # 路径拼接
+        os.makedirs('urls', exist_ok=True)
+        file_name = uuid.uuid4().hex + '.txt'
+        file_path = os.path.join('urls', file_name)
 
-        # 将URLs写入文件
         with open(file_path, 'w') as file:
             urls = self.urlTextEdit.toPlainText().strip()
             file.write(urls)
@@ -220,6 +225,15 @@ class DirsearchGUI(QMainWindow):
         if not self.paramsLineEdit.text():
             self.statusLabel.setText('状态: 准备就绪')
 
+    def clear_cache(self):
+        # 删除reports文件夹和urls文件夹下的所有文件
+        for folder in ['reports', 'urls']:
+            folder_path = os.path.join(os.getcwd(), folder)
+            if os.path.exists(folder_path):
+                shutil.rmtree(folder_path)
+                os.makedirs(folder_path, exist_ok=True)  # 重新创建文件夹以避免错误
+        # 弹出信息框提示用户
+        QMessageBox.information(self, "清除缓存", "已清除缓存url与报告！")
 
 app = QApplication(sys.argv)
 window = DirsearchGUI()
