@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout,
-    QWidget, QTextEdit, QLabel, QLineEdit, QFormLayout, QScrollArea,
-    QMessageBox
+    QWidget, QTextEdit, QLabel, QHBoxLayout, QFormLayout, QScrollArea,
+    QMessageBox, QLineEdit  # 添加 QLineEdit
 )
 from PyQt6.QtGui import QFont, QIcon
 import sys
@@ -17,7 +17,7 @@ class DirsearchGUI(QMainWindow):
         # 窗口设置
         self.setWindowTitle('Dirsearch GUI - Lxy')
         self.setGeometry(800, 400, 600, 400)
-        self.setWindowIcon(QIcon('your-icon-path.png'))
+        self.setWindowIcon(QIcon('static/logo.png'))
 
         # 设置字体
         font = QFont()
@@ -32,7 +32,8 @@ class DirsearchGUI(QMainWindow):
         # 创建表单布局以添加输入框和标签
         self.formLayout = QFormLayout()
         self.urlTextEdit = QTextEdit()
-        self.urlTextEdit.setAcceptRichText(False)  # 禁止将URL转换为超链接
+        self.urlTextEdit.setAcceptRichText(False)
+        self.headersTextEdit = QTextEdit()
         self.paramsLineEdit = QLineEdit()
 
         # 创建按钮和标签
@@ -40,7 +41,13 @@ class DirsearchGUI(QMainWindow):
         self.defaultButton = QPushButton('默认参数')
         self.helpToggleButton = QPushButton('显示帮助')
         self.clearCacheButton = QPushButton('清除缓存')
+        self.addHeaderButton = QPushButton('添加header')
         self.statusLabel = QLabel('状态: 准备就绪')
+
+        # 创建header布局并添加header文本框和按钮
+        self.headerLayout = QHBoxLayout()
+        self.headerLayout.addWidget(self.headersTextEdit)
+        self.headerLayout.addWidget(self.addHeaderButton)
 
         # 按钮样式
         buttonStyle = """
@@ -57,39 +64,45 @@ class DirsearchGUI(QMainWindow):
         self.runButton.setStyleSheet(buttonStyle)
         self.defaultButton.setStyleSheet(buttonStyle)
         self.helpToggleButton.setStyleSheet(buttonStyle)
-        self.clearCacheButton.setStyleSheet(buttonStyle)  # 应用样式到清除缓存按钮
+        self.clearCacheButton.setStyleSheet(buttonStyle)
+        self.addHeaderButton.setStyleSheet(buttonStyle)
 
         # 创建帮助文本框和滚动区域
         self.helpTextEdit = QTextEdit()
         self.helpScrollArea = QScrollArea()
         self.helpScrollArea.setWidget(self.helpTextEdit)
         self.helpScrollArea.setWidgetResizable(True)
-        self.helpScrollArea.setMaximumHeight(0)  # 修改默认不显示
+        self.helpScrollArea.setMaximumHeight(0)
         self.helpTextEdit.setStyleSheet("background-color: #F0F0F0;")
-
+        
         # 设置帮助文本框
         self.set_help_text()
         self.helpTextEdit.setReadOnly(True)
 
         # 添加表单元素
         self.formLayout.addRow('URLs:', self.urlTextEdit)
+        self.formLayout.addRow('自定义Header:', self.headerLayout)
         self.formLayout.addRow('自定义参数:', self.paramsLineEdit)
 
         # 为按钮添加事件
         self.runButton.clicked.connect(self.run_dirsearch)
         self.defaultButton.clicked.connect(self.set_default_params)
         self.helpToggleButton.clicked.connect(self.toggle_help_visibility)
-        self.clearCacheButton.clicked.connect(self.clear_cache)  # 绑定清除缓存方法到按钮
+        self.clearCacheButton.clicked.connect(self.clear_cache)
+        self.addHeaderButton.clicked.connect(self.add_header_to_file)  # 绑定添加header方法到按钮
 
         # 为自定义参数输入框添加文本变化事件
         self.paramsLineEdit.textChanged.connect(self.update_status_on_text_change)
+
+        # 用于跟踪 header 文件路径参数
+        self.currentHeaderFilePath = ""
 
         # 组合布局
         self.layout.addLayout(self.formLayout)
         self.layout.addWidget(self.runButton)
         self.layout.addWidget(self.defaultButton)
         self.layout.addWidget(self.helpToggleButton)
-        self.layout.addWidget(self.clearCacheButton)  # 添加清除缓存按钮到布局
+        self.layout.addWidget(self.clearCacheButton)
         self.layout.addWidget(self.statusLabel)
         self.layout.addWidget(self.helpScrollArea)
 
@@ -189,12 +202,10 @@ class DirsearchGUI(QMainWindow):
         -o PATH/URL, --output=PATH/URL: 设置输出文件，或MySQL/PostgreSQL数据库URL（格式：scheme: //[username:password @]host[:port] /database）
         --format=FORMAT: 设置报告的输出格式（支持：simple, plain, json, xml, md, csv, html, sqlite, mysql, postgresql）
         --log=PATH: 指定日志文件路径"""            
-        # 可以继续追加帮助文本内容...
         )
         self.helpTextEdit.setText(help_text)
 
     def toggle_help_visibility(self):
-        # 根据当前高度切换滚动区域的高度
         if self.helpScrollArea.maximumHeight() > 0:
             self.helpScrollArea.setMaximumHeight(0)
             self.helpToggleButton.setText('显示帮助')
@@ -217,22 +228,38 @@ class DirsearchGUI(QMainWindow):
         self.statusLabel.setText('状态: 正在扫描...')
 
     def set_default_params(self):
-        self.paramsLineEdit.setText('-i 200-399 -t 300 --random-agent')
+        self.paramsLineEdit.setText('-i 200-399 -t 200 --random-agent --full-url -r -R 1')
         self.statusLabel.setText('状态: 已设置默认参数')
 
     def update_status_on_text_change(self):
         if not self.paramsLineEdit.text():
             self.statusLabel.setText('状态: 准备就绪')
 
+    def add_header_to_file(self):
+        os.makedirs('headers', exist_ok=True)
+        header_file_name = uuid.uuid4().hex + '.txt'
+        header_file_path = os.path.join('headers', header_file_name)
+
+        with open(header_file_path, 'w') as file:
+            headers = self.headersTextEdit.toPlainText().strip()
+            file.write(headers)
+
+        # 更新参数，确保只有一个 --header-file 在参数中
+        params = self.paramsLineEdit.text()
+        if self.currentHeaderFilePath:
+            params = params.replace(f' --header-file="{self.currentHeaderFilePath}"', '')
+        self.currentHeaderFilePath = header_file_path
+        params += f' --header-file="{header_file_path}"'
+        self.paramsLineEdit.setText(params)
+        self.statusLabel.setText('状态: 已添加header文件')
+
     def clear_cache(self):
-        # 删除reports文件夹和urls文件夹下的所有文件
-        for folder in ['reports', 'urls']:
+        for folder in ['reports', 'urls', 'headers']:  
             folder_path = os.path.join(os.getcwd(), folder)
             if os.path.exists(folder_path):
                 shutil.rmtree(folder_path)
-                os.makedirs(folder_path, exist_ok=True)  # 重新创建文件夹以避免错误
-        # 弹出信息框提示用户
-        QMessageBox.information(self, "清除缓存", "已清除缓存url与报告！")
+                os.makedirs(folder_path, exist_ok=True)
+        QMessageBox.information(self, "清除缓存", "已清除缓存！")
 
 app = QApplication(sys.argv)
 window = DirsearchGUI()
